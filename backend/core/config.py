@@ -25,10 +25,16 @@ class Settings(BaseSettings):
     ZAPI_CLIENT_TOKEN: str = ""
     ZAPI_BASE_URL: str = "https://api.z-api.io"
 
-    # Twilio (SMS)
+    # Twilio (SMS + Voice — same account, voice needs a voice-capable number)
     TWILIO_ACCOUNT_SID: str = ""
     TWILIO_AUTH_TOKEN: str = ""
     TWILIO_FROM_NUMBER: str = ""
+    TWILIO_VOICE_FROM_NUMBER: str = ""  # Falls back to TWILIO_FROM_NUMBER if empty
+    TWILIO_VOICE_LANGUAGE: str = "pt-BR"
+    TWILIO_VOICE_NAME: str = "Polly.Camila-Neural"  # Brazilian Portuguese neural voice
+    # Public base URL Twilio uses to fetch TwiML and post status callbacks.
+    # Must be reachable from the public internet (use ngrok in local dev).
+    PUBLIC_BASE_URL: str = ""  # Falls back to APP_BASE_URL if empty
 
     # Asaas (Payments)
     ASAAS_API_KEY: str

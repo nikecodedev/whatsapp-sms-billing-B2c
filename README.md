@@ -81,7 +81,7 @@ Acesse: http://localhost:5173
   /ai            — Motor de decisão Claude
   /api/routes    — Endpoints FastAPI
   /campaigns     — Gerenciador de campanhas + compliance CDC
-  /channels      — WhatsApp (Z-API) + SMS (Twilio)
+  /channels      — WhatsApp (Z-API) + SMS (Twilio) + Voz (Twilio Voice)
   /core          — Config, banco de dados
   /importers     — Importador Excel/CSV
   /models        — SQLAlchemy models + Pydantic schemas
@@ -102,6 +102,23 @@ Configure no painel Asaas:
 ```
 POST https://seu-dominio.com/webhooks/asaas
 ```
+
+---
+
+## Ligações de voz (Twilio Voice)
+
+A escalação WhatsApp → SMS → Voz usa **Twilio Voice** para a última etapa.
+O fluxo:
+
+1. Celery dispara `place_call(phone, contact_id)` → Twilio cria a chamada.
+2. Twilio busca TwiML em `GET /webhooks/voice/twiml/{contact_id}` — o backend retorna `<Say>` com a mensagem gerada pela Claude usando a voz `Polly.Camila-Neural` (pt-BR).
+3. `<Gather>` oferece: **pressione 1** para receber o link de pagamento via SMS.
+4. `POST /webhooks/voice/status/{contact_id}` atualiza o `Contact` para `delivered` / `failed`.
+
+**Requisitos:**
+- Número Twilio com capacidade de **Voice** habilitada (~USD 1/mês).
+- `PUBLIC_BASE_URL` apontando para uma URL acessível pela internet pública. Em dev local, use `ngrok http 8000` e cole a URL `https://...` no `.env`.
+- Defina `TWILIO_VOICE_FROM_NUMBER` se quiser separar número de SMS e voz; caso contrário, usa `TWILIO_FROM_NUMBER`.
 
 ---
 

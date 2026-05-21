@@ -13,6 +13,7 @@ from models.contact import Contact, ContactStatus, Channel
 from models.payment import Payment, PaymentStatus
 from channels.whatsapp import send_whatsapp
 from channels.sms import send_sms
+from channels.voice import place_call
 from payments.asaas import get_payment_status
 
 BRAZIL_TZ = ZoneInfo("America/Sao_Paulo")
@@ -62,17 +63,21 @@ async def _send_contact(contact: Contact, db):
 
     message = contact.message_body or ""
 
+    import asyncio
+    loop = asyncio.get_event_loop()
+
     if contact.channel == Channel.WHATSAPP:
         result = await send_whatsapp(debtor.telefone, message)
     elif contact.channel == Channel.SMS:
-        # SMS send is sync — run in thread pool
-        import asyncio
-        loop = asyncio.get_event_loop()
+        # Twilio SDK is sync — offload to thread pool
         result = await loop.run_in_executor(None, send_sms, debtor.telefone, message)
+    elif contact.channel == Channel.CALL:
+        # Voice: place outbound call. Twilio will fetch TwiML from our webhook
+        # using contact.id to look up the AI-generated message.
+        result = await loop.run_in_executor(None, place_call, debtor.telefone, str(contact.id))
     else:
-        # Voice calls — Phase 2 (mark as failed for now with clear reason)
         contact.status = ContactStatus.FAILED
-        contact.error_message = "Voice calls available in Phase 2"
+        contact.error_message = f"Unknown channel: {contact.channel}"
         contact.sent_at = datetime.now(BRAZIL_TZ)
         return
 

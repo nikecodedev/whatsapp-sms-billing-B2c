@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     SECRET_KEY: str = "change-me-in-production"
 
+    # CORS — comma-separated list of allowed frontend origins.
+    # In production, set this to the deployed frontend URL.
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://quesh:quesh@localhost:5432/quesh"
     DATABASE_URL_SYNC: str = "postgresql://quesh:quesh@localhost:5432/quesh"

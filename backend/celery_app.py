@@ -15,6 +15,10 @@ celery.conf.update(
     accept_content=["json"],
     timezone="America/Sao_Paulo",
     enable_utc=True,
+    # Cap the prefork pool. Celery otherwise forks one process per host CPU
+    # (48 on Railway) and the container is OOM-killed on boot.
+    worker_concurrency=2,
+    worker_prefetch_multiplier=1,
     beat_schedule={
         # Dispatch pending contact attempts every 5 minutes
         "dispatch-contacts": {

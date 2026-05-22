@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 from functools import lru_cache
 
 
@@ -48,6 +49,17 @@ class Settings(BaseSettings):
 
     # App base URL (for payment link shortener redirect)
     APP_BASE_URL: str = "http://localhost:8000"
+
+    @model_validator(mode="after")
+    def _strip_string_fields(self) -> "Settings":
+        """Trim whitespace from every string setting. Values pasted into a
+        hosting dashboard (e.g. Railway) routinely pick up a stray trailing
+        newline — that broke the DB connection with database 'railway\\n'."""
+        for field in type(self).model_fields:
+            value = getattr(self, field)
+            if isinstance(value, str) and value != value.strip():
+                object.__setattr__(self, field, value.strip())
+        return self
 
     @property
     def async_database_url(self) -> str:

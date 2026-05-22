@@ -12,9 +12,11 @@ class Settings(BaseSettings):
     # In production, set this to the deployed frontend URL.
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://quesh:quesh@localhost:5432/quesh"
-    DATABASE_URL_SYNC: str = "postgresql://quesh:quesh@localhost:5432/quesh"
+    # Database. DATABASE_URL accepts any Postgres URL — the async/sync driver
+    # prefixes are normalized by the properties below, so a plain
+    # `postgresql://...` (e.g. Railway's) works without hand-editing.
+    DATABASE_URL: str = "postgresql+asyncpg://quesh:quesh@localhost:5433/quesh"
+    DATABASE_URL_SYNC: str = ""  # optional; derived from DATABASE_URL when empty
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -46,6 +48,26 @@ class Settings(BaseSettings):
 
     # App base URL (for payment link shortener redirect)
     APP_BASE_URL: str = "http://localhost:8000"
+
+    @property
+    def async_database_url(self) -> str:
+        """DATABASE_URL normalized to the async (asyncpg) driver."""
+        url = self.DATABASE_URL
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://"):]
+        if url.startswith("postgresql://"):
+            url = "postgresql+asyncpg://" + url[len("postgresql://"):]
+        return url
+
+    @property
+    def sync_database_url(self) -> str:
+        """A sync (psycopg2) URL — explicit DATABASE_URL_SYNC, else derived."""
+        url = self.DATABASE_URL_SYNC or self.DATABASE_URL
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://"):]
+        if url.startswith("postgresql+asyncpg://"):
+            url = "postgresql://" + url[len("postgresql+asyncpg://"):]
+        return url
 
     class Config:
         env_file = ".env"

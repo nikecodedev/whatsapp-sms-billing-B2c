@@ -18,7 +18,9 @@ class ContactDecision:
     reasoning: str
 
 
-_client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+# AsyncAnthropic — sync calls in an async context block the event loop
+# (the entire backend stops serving requests during the API call).
+_client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
 
 def _days_overdue(due_date: date) -> int:
@@ -90,7 +92,7 @@ async def decide_contact(
         hora_atual=datetime.now().strftime("%H:%M"),
     )
 
-    response = _client.messages.create(
+    response = await _client.messages.create(
         model=settings.CLAUDE_MODEL,
         max_tokens=1024,
         system=DECISION_SYSTEM_PROMPT,

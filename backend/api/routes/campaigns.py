@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from core.database import get_db
+from core.database import get_db, AsyncSessionLocal
 from models.campaign import Campaign, CampaignStatus
 from models.contact import Contact, ContactStatus
 from models.payment import Payment, PaymentStatus
@@ -59,6 +59,17 @@ async def update_campaign(
     return campaign
 
 
+async def _enqueue_in_background(campaign_id: UUID, tenant_id: UUID) -> None:
+    """Run contact scheduling with a FRESH DB session.
+
+    FastAPI background tasks execute after the request finishes, by which
+    point the request's dependency session is already closed. The task
+    must therefore open its own session.
+    """
+    async with AsyncSessionLocal() as db:
+        await enqueue_campaign_contacts(campaign_id, tenant_id, db)
+
+
 @router.post("/{campaign_id}/launch", status_code=202)
 async def launch_campaign(
     tenant_id: UUID,
@@ -76,7 +87,7 @@ async def launch_campaign(
     campaign.status = CampaignStatus.ACTIVE
     await db.commit()
 
-    background_tasks.add_task(enqueue_campaign_contacts, campaign_id, tenant_id, db)
+    background_tasks.add_task(_enqueue_in_background, campaign_id, tenant_id)
     return {"message": "Campaign launched. Contact scheduling started in background."}
 
 

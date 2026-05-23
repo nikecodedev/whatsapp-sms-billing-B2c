@@ -3,7 +3,7 @@ Campaign manager: orchestrates debtor selection, AI decisions,
 payment link generation, and contact scheduling.
 """
 import uuid
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -123,10 +123,14 @@ async def enqueue_campaign_contacts(
             nome=debtor.nome_completo,
             email=debtor.email,
         )
+        # Asaas rejects past dueDate. data_vencimento is the original debt
+        # date (used for "days overdue" context to the AI) — for the new
+        # collection charge we always give at least a week's settlement window.
+        asaas_due_date = max(date.today() + timedelta(days=7), debtor.data_vencimento)
         charge = await create_pix_charge(
             customer_id=customer_id,
             amount=debtor.valor_divida,
-            due_date=debtor.data_vencimento,
+            due_date=asaas_due_date,
             description=debtor.descricao or f"Cobrança QUESH — {debtor.nome_completo}",
             external_reference=str(debtor.id),
         )
